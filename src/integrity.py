@@ -3,11 +3,11 @@ import json
 from pathlib import Path
 
 
-HASH_FILE = Path("data/hashes.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+HASH_FILE = PROJECT_ROOT / "data" / "hashes.json"
 
 
 def calculate_sha256(file_path: str) -> str:
-    """Calculate SHA-256 hash of a file."""
     sha256 = hashlib.sha256()
 
     with Path(file_path).open("rb") as file:
@@ -18,7 +18,6 @@ def calculate_sha256(file_path: str) -> str:
 
 
 def save_hash(file_path: str) -> str:
-    """Calculate and save the baseline hash for a file."""
     file_hash = calculate_sha256(file_path)
 
     HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -29,7 +28,8 @@ def save_hash(file_path: str) -> str:
         with HASH_FILE.open("r", encoding="utf-8") as file:
             hashes = json.load(file)
 
-    hashes[str(Path(file_path))] = file_hash
+    absolute_path = str(Path(file_path).resolve())
+    hashes[absolute_path] = file_hash
 
     with HASH_FILE.open("w", encoding="utf-8") as file:
         json.dump(hashes, file, indent=4)
@@ -38,19 +38,18 @@ def save_hash(file_path: str) -> str:
 
 
 def verify_integrity(file_path: str):
-    """Compare current file hash against the stored baseline."""
-    path = str(Path(file_path))
-
     if not HASH_FILE.exists():
         return None, "No baseline hash found."
 
     with HASH_FILE.open("r", encoding="utf-8") as file:
         hashes = json.load(file)
 
-    if path not in hashes:
+    absolute_path = str(Path(file_path).resolve())
+
+    if absolute_path not in hashes:
         return None, "File has not been registered."
 
     current_hash = calculate_sha256(file_path)
-    original_hash = hashes[path]
+    original_hash = hashes[absolute_path]
 
     return current_hash == original_hash, current_hash
